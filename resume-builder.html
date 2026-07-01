@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能简历生成器</title>
+<style>
+:root {
+  --sidebar-width: 200px;
+  --primary: #4F6EF7;
+  --primary-light: #EEF1FE;
+  --sidebar-bg: #1a1d2e;
+  --sidebar-text: #a0a4b8;
+  --sidebar-active: #fff;
+  --bg: #f5f6fa;
+  --card-bg: #fff;
+  --text: #2d3047;
+  --text-secondary: #6b7089;
+  --border: #e4e6f0;
+  --danger: #e74c3c;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --radius: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+  z-index: 10;
+}
+.sidebar .logo {
+  padding: 0 20px 28px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+.sidebar .logo span { color: var(--primary); }
+.sidebar-nav { flex: 1; }
+.sidebar-nav .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  color: var(--sidebar-text);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  border-left: 3px solid transparent;
+}
+.sidebar-nav .nav-item:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.sidebar-nav .nav-item.active {
+  color: #fff;
+  background: rgba(79,110,247,0.15);
+  border-left-color: var(--primary);
+}
+.sidebar-nav .nav-item .icon { font-size: 18px; width: 22px; text-align: center; }
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 12px;
+  color: var(--sidebar-text);
+}
+
+/* Main */
+.main { flex: 1; overflow-y: auto; padding: 0; }
+
+.tab-content { display: none; padding: 32px; max-width: 1100px; margin: 0 auto; }
+.tab-content.active { display: block; }
+
+/* Common */
+h2 { font-size: 22px; margin-bottom: 4px; }
+h3 { font-size: 16px; margin-bottom: 12px; color: var(--text); }
+.subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; cursor: pointer; border: none; transition: all 0.2s;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: #3d5ce5; }
+.btn-outline { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-outline:hover { background: var(--primary-light); }
+.btn-danger { background: #fff; color: var(--danger); border: 1.5px solid var(--danger); }
+.btn-danger:hover { background: #fef0ef; }
+.btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+.btn-xs { padding: 3px 8px; font-size: 11px; border-radius: 5px; }
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+/* Tag */
+.tag {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 500; background: var(--primary-light);
+  color: var(--primary); margin: 2px 4px 2px 0;
+}
+.tag.match { background: #e8f5e9; color: #2e7d32; }
+.tag.high { background: #fff3e0; color: #e65100; }
+
+/* Form */
+.form-group { margin-bottom: 14px; }
+.form-group label {
+  display: block; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.form-group input, .form-group textarea, .form-group select {
+  width: 100%; padding: 9px 12px; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 13px; font-family: inherit;
+  transition: border-color 0.2s; resize: vertical;
+}
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+  outline: none; border-color: var(--primary);
+}
+.form-row { display: flex; gap: 12px; }
+.form-row .form-group { flex: 1; }
+
+/* Module Section */
+.module-section {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.module-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; background: #fafbfc; cursor: pointer; user-select: none;
+}
+.module-header:hover { background: #f0f2f8; }
+.module-header .module-title { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.module-header .module-badge {
+  background: var(--primary-light); color: var(--primary);
+  font-size: 11px; padding: 2px 10px; border-radius: 12px; font-weight: 600;
+}
+.module-header .arrow { transition: transform 0.2s; font-size: 12px; color: var(--text-secondary); }
+.module-section.open .module-header .arrow { transform: rotate(90deg); }
+.module-body { display: none; padding: 16px 18px; border-top: 1px solid var(--border); }
+.module-section.open .module-body { display: block; }
+
+/* Item card */
+.item-card {
+  background: #fafbfc; border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; margin-bottom: 10px;
+  position: relative;
+}
+.item-card .item-header {
+  display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;
+}
+.item-card .item-title { font-weight: 600; font-size: 14px; }
+.item-card .item-subtitle { font-size: 12px; color: var(--text-secondary); }
+.item-card .item-date { font-size: 12px; color: var(--text-secondary); }
+.item-card .item-desc { font-size: 13px; color: var(--text); line-height: 1.6; white-space: pre-wrap; }
+.item-card .item-tags { margin-top: 8px; }
+.item-card .item-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+/* JD Area */
+.jd-textarea {
+  width: 100%; min-height: 240px; padding: 14px; border: 1.5px solid var(--border);
+  border-radius: var(--radius); font-size: 13px; font-family: inherit;
+  resize: vertical; line-height: 1.7;
+}
+.jd-textarea:focus { outline: none; border-color: var(--primary); }
+.jd-result { margin-top: 20px; }
+.jd-section { margin-bottom: 16px; }
+.jd-section h4 { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.jd-section .tag-list { display: flex; flex-wrap: wrap; }
+
+/* Match list */
+.match-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  background: #fff; border: 1.5px solid var(--border); border-radius: 8px;
+  margin-bottom: 8px; cursor: pointer; transition: all 0.2s;
+}
+.match-item:hover { border-color: var(--primary); background: var(--primary-light); }
+.match-item.selected { border-color: var(--primary); background: var(--primary-light); }
+.match-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+.match-item .match-info { flex: 1; }
+.match-item .match-title { font-weight: 600; font-size: 14px; }
+.match-item .match-subtitle { font-size: 12px; color: var(--text-secondary); }
+.match-item .match-score {
+  font-weight: 700; font-size: 18px; padding: 6px 12px;
+  border-radius: 8px; min-width: 56px; text-align: center;
+}
+.match-score.high { background: #e8f5e9; color: #2e7d32; }
+.match-score.mid { background: #fff8e1; color: #f57f17; }
+.match-score.low { background: #fce4ec; color: #c62828; }
+
+/* Resume Preview */
+.resume-preview {
+  background: #fff; width: 210mm; margin: 0 auto;
+  padding: 25mm 20mm; box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  border-radius: 4px; font-size: 13px; line-height: 1.8;
+  color: #333; min-height: 297mm;
+}
+.resume-preview .r-name { font-size: 26px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+.resume-preview .r-contact {
+  text-align: center; font-size: 12px; color: #666; margin-bottom: 20px;
+  display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;
+}
+.resume-preview .r-section { margin-bottom: 18px; }
+.resume-preview .r-section-title {
+  font-size: 15px; font-weight: 700; border-bottom: 2px solid #7EB8DA;
+  padding-bottom: 4px; margin-bottom: 10px; color: #7EB8DA;
+}
+.resume-preview .r-item { margin-bottom: 12px; }
+.resume-preview .r-item-header { display: flex; justify-content: space-between; align-items: baseline; }
+.resume-preview .r-item-title { font-weight: 600; font-size: 14px; }
+.resume-preview .r-item-sub { font-size: 12px; color: #666; }
+.resume-preview .r-item-date { font-size: 12px; color: #999; white-space: nowrap; }
+.resume-preview .r-item-desc { font-size: 13px; margin-top: 4px; white-space: pre-wrap; }
+.resume-preview .r-skills { display: flex; flex-wrap: wrap; gap: 6px; }
+.resume-preview .r-skill { font-size: 12px; padding: 2px 10px; background: #f0f2f8; border-radius: 4px; }
+.resume-preview .highlight { background: #fff3cd; padding: 0 2px; border-radius: 2px; }
+
+/* Plain text */
+.plain-text-resume {
+  background: #fff; border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 20px; font-family: 'Courier New', monospace;
+  font-size: 12px; white-space: pre-wrap; max-height: 500px;
+  overflow-y: auto; line-height: 1.6; display: none;
+}
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 100; justify-content: center; align-items: flex-start; padding-top: 60px;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #fff; border-radius: var(--radius); padding: 28px;
+  width: 560px; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+}
+.modal h3 { margin-bottom: 20px; }
+.modal .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+/* Toast */
+.toast {
+  position: fixed; top: 20px; right: 20px; padding: 12px 20px;
+  border-radius: 8px; color: #fff; font-size: 13px; z-index: 200;
+  opacity: 0; transform: translateY(-10px); transition: all 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+.toast.info { background: var(--primary); }
+
+/* Action bar */
+.action-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+
+/* Tabs within tabs */
+.sub-tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--border); }
+.sub-tab {
+  padding: 10px 20px; font-size: 13px; font-weight: 500; cursor: pointer;
+  color: var(--text-secondary); border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.sub-tab:hover { color: var(--primary); }
+.sub-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+.empty-state {
+  text-align: center; padding: 40px; color: var(--text-secondary);
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+@media (max-width: 768px) {
+  .sidebar { min-width: 60px; width: 60px; }
+  .sidebar .logo { font-size: 14px; padding: 0 12px 20px; }
+  .sidebar-nav .nav-item { padding: 12px; justify-content: center; }
+  .sidebar-nav .nav-item span:not(.icon) { display: none; }
+  .tab-content { padding: 16px; }
+  .form-row { flex-direction: column; gap: 0; }
+  .resume-preview { width: 100%; padding: 20px; }
+}
+
+@media print {
+  body { background: #fff; }
+  .sidebar, .action-bar, .sub-tabs, .match-list-area, .btn, .toast { display: none !important; }
+  .main { overflow: visible; }
+  .tab-content { display: block !important; max-width: none; padding: 0; }
+  .resume-preview { box-shadow: none; width: 100%; margin: 0; border-radius: 0; padding: 15mm 12mm; }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="logo"><span>📄</span> 简历生成器</div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-tab="tab-library">
+      <span class="icon">📚</span> <span>信息库</span>
+    </div>
+    <div class="nav-item" data-tab="tab-jd">
+      <span class="icon">🔍</span> <span>JD 分析</span>
+    </div>
+    <div class="nav-item" data-tab="tab-match">
+      <span class="icon">🎯</span> <span>匹配 & 简历</span>
+    </div>
+    <div class="nav-item" data-tab="tab-export">
+      <span class="icon">📤</span> <span>导出</span>
+    </div>
+  </nav>
+  <div class="sidebar-footer">数据存于浏览器本地</div>
+</aside>
+
+<!-- Main Content -->
+<main class="main">
+
+<!-- Tab 1: 信息库 -->
+<section class="tab-content active" id="tab-library">
+  <h2>📚 信息库</h2>
+  <p class="subtitle">录入你的完整经历，每个模块可展开编辑</p>
+  <div class="action-bar">
+    <button class="btn btn-outline btn-sm" onclick="exportData()">📥 导出 JSON</button>
+    <button class="btn btn-outline btn-sm" onclick="document.getElementById('importFile').click()">📤 导入 JSON</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="btn btn-outline btn-sm" onclick="loadSampleData()">🎲 加载示例数据</button>
+  </div>
+  <div id="libraryModules"></div>
+</section>
+
+<!-- Tab 2: JD 分析 -->
+<section class="tab-content" id="tab-jd">
+  <h2>🔍 JD 分析</h2>
+  <p class="subtitle">粘贴职位描述，自动提取关键要求</p>
+  <textarea class="jd-textarea" id="jdInput" placeholder="在此粘贴职位 JD（岗位描述）...&#10;&#10;例如：&#10;岗位职责：&#10;1. 负责后端服务架构设计与开发&#10;2. 参与系统性能优化...&#10;&#10;任职要求：&#10;1. 本科及以上学历，3年以上 Python 开发经验&#10;2. 精通 Django/Flask，熟悉 MySQL、Redis&#10;3. 具备良好的沟通能力和团队协作精神..."></textarea>
+  <div style="margin-top:12px;">
+    <button class="btn btn-primary" onclick="analyzeJD()">🔬 分析 JD</button>
+  </div>
+  <div class="jd-result" id="jdResult"></div>
+</section>
+
+<!-- Tab 3: 匹配 & 简历 -->
+<section class="tab-content" id="tab-match">
+  <h2>🎯 匹配 & 简历预览</h2>
+  <p class="subtitle">先到 JD 分析 Tab 粘贴 JD，然后回到这里查看匹配结果</p>
+  <button class="btn btn-primary" onclick="runMatching()" style="margin-bottom:16px;">🔄 执行匹配</button>
+  <div style="display:flex; gap:24px; flex-wrap:wrap;">
+    <div style="flex:1; min-width:300px;" class="match-list-area" id="matchList">
+      <p class="empty-state"><span class="empty-icon">🔍</span><br>请先在 JD 分析 Tab 粘贴 JD，再点击"执行匹配"</p>
+    </div>
+    <div style="flex:2; min-width:400px;">
+      <div class="sub-tabs">
+        <div class="sub-tab active" data-subtab="preview-web" onclick="switchSubTab('web')">网页预览</div>
+        <div class="sub-tab" data-subtab="preview-text" onclick="switchSubTab('text')">纯文本</div>
+      </div>
+      <div id="preview-web" class="resume-preview">
+        <p style="text-align:center;color:#999;padding:60px 0;">简历预览将在此显示</p>
+      </div>
+      <div id="preview-text" class="plain-text-resume"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Tab 4: 导出 -->
+<section class="tab-content" id="tab-export">
+  <h2>📤 导出</h2>
+  <p class="subtitle">多种方式导出你的简历</p>
+  <div class="card">
+    <h3>🖨️ 打印简历</h3>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">使用浏览器打印功能，可保存为 PDF。请先在"匹配 & 简历"Tab 生成简历。</p>
+    <button class="btn btn-primary" onclick="printResume()">打印简历</button>
+  </div>
+  <div class="card">
+    <h3>📋 复制纯文本</h3>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">复制纯文本格式的简历，方便粘贴到 Word、邮件或招聘平台。</p>
+    <button class="btn btn-outline" onclick="copyPlainText()">复制纯文本简历</button>
+  </div>
+  <div class="card">
+    <h3>📥 导出全部数据</h3>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">将所有经历数据导出为 JSON 文件，方便备份或迁移。</p>
+    <button class="btn btn-outline" onclick="exportData()">导出 JSON</button>
+  </div>
+</section>
+
+</main>
+
+<!-- Modal for adding/editing items -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== DATA MODEL ====================
+const DEFAULT_DATA = {
+  basic: { name: '', gender: '', birth: '', email: '', phone: '', wechat: '', city: '', targetPosition: '', targetSalary: '', github: '', linkedin: '', blog: '' },
+  education: [],
+  work: [],
+  internship: [],
+  campus: [],
+  projects: [],
+  skills: [],
+  certificates: [],
+  selfEval: ''
+};
+
+let appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+
+// JD analysis result
+let jdAnalysis = null;
+
+// Matching result
+let matchResults = { work: [], internship: [], projects: [], campus: [] };
+
+// Load from localStorage
+try {
+  const saved = localStorage.getItem('resume_builder_data');
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    appData = { ...JSON.parse(JSON.stringify(DEFAULT_DATA)), ...parsed };
+  }
+} catch(e) {}
+
+function saveData() {
+  localStorage.setItem('resume_builder_data', JSON.stringify(appData));
+}
+
+// ==================== NAVIGATION ====================
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.getElementById(item.dataset.tab).classList.add('active');
+    if (item.dataset.tab === 'tab-library') renderLibrary();
+    if (item.dataset.tab === 'tab-match') renderMatchTab();
+  });
+});
+
+function switchSubTab(type) {
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[data-subtab="preview-${type}"]`).classList.add('active');
+  document.getElementById('preview-web').style.display = type === 'web' ? 'block' : 'none';
+  document.getElementById('preview-text').style.display = type === 'text' ? 'block' : 'none';
+}
+
+// ==================== TOAST ====================
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => { t.className = 'toast'; }, 2000);
+}
+
+// ==================== MODAL ====================
+function openModal(title, contentHtml, onSave) {
+  const overlay = document.getElementById('modalOverlay');
+  const content = document.getElementById('modalContent');
+  content.innerHTML = `
+    <h3>${title}</h3>
+    ${contentHtml}
+    <div class="btn-row">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary btn-sm" onclick="window._modalSave()">保存</button>
+    </div>
+  `;
+  window._modalSave = () => {
+    const result = onSave();
+    if (result !== false) { closeModal(); renderLibrary(); renderMatchTab(); }
+  };
+  overlay.classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+// ==================== TAG EXTRACTION ====================
+const TECH_KEYWORDS = [
+  'Python','Java','JavaScript','TypeScript','Go','Rust','C++','C#','Ruby','PHP','Swift','Kotlin','Scala',
+  'React','Vue','Angular','Svelte','Next.js','Nuxt','Node.js','Express','Django','Flask','FastAPI','Spring','SpringBoot',
+  'MySQL','PostgreSQL','MongoDB','Redis','Elasticsearch','Cassandra','Neo4j',
+  'Docker','Kubernetes','K8s','AWS','Azure','GCP','阿里云','腾讯云','CI/CD','Jenkins','GitLab','GitHub Actions',
+  'TensorFlow','PyTorch','机器学习','深度学习','NLP','CV','LLM','大模型','RAG',
+  'Hadoop','Spark','Flink','Kafka','RabbitMQ','gRPC','GraphQL','REST','WebSocket',
+  'HTML','CSS','Sass','Tailwind','Bootstrap','Webpack','Vite','Rollup',
+  'Linux','Shell','Git','Nginx','Prometheus','Grafana','ELK',
+  'Figma','Sketch','Photoshop','Illustrator','After Effects','Blender',
+  '产品设计','用户研究','数据分析','A/B测试','SQL','Tableau','Power BI','Excel',
+  '敏捷开发','Scrum','项目管理','Jira','Confluence','Notion',
+  '微服务','分布式','高并发','高可用','性能优化','系统设计',
+];
+const SOFT_KEYWORDS = ['沟通','团队协作','领导力','自驱','抗压','学习能力','解决问题','逻辑思维','创新','执行力','责任心','细节','时间管理','多任务','跨部门','英语','日语'];
+const DEGREE_KEYWORDS = ['本科','硕士','博士','MBA','大专','985','211','双一流'];
+const INDUSTRY_KEYWORDS = ['金融','电商','教育','医疗','游戏','SaaS','社交','广告','物联网','AI','区块链','新能源','汽车','零售','物流','房地产'];
+
+function extractTags(text) {
+  if (!text) return [];
+  const tags = [];
+  const lower = text.toLowerCase();
+  TECH_KEYWORDS.forEach(k => {
+    if (lower.includes(k.toLowerCase())) tags.push(k);
+  });
+  SOFT_KEYWORDS.forEach(k => {
+    if (text.includes(k)) tags.push(k);
+  });
+  INDUSTRY_KEYWORDS.forEach(k => {
+    if (text.includes(k)) tags.push(k);
+  });
+  return [...new Set(tags)];
+}
+
+// ==================== RENDER LIBRARY ====================
+function renderLibrary() {
+  const container = document.getElementById('libraryModules');
+  const modules = [
+    { key: 'basic', title: '基本信息', icon: '👤', render: renderBasicInfo },
+    { key: 'education', title: '教育经历', icon: '🎓', render: renderListModule, fields: eduFields },
+    { key: 'work', title: '工作经历', icon: '💼', render: renderListModule, fields: workFields },
+    { key: 'internship', title: '实习经历', icon: '📝', render: renderListModule, fields: internFields },
+    { key: 'campus', title: '校园经历', icon: '🏫', render: renderListModule, fields: campusFields },
+    { key: 'projects', title: '项目经历', icon: '🚀', render: renderListModule, fields: projectFields },
+    { key: 'skills', title: '技能', icon: '⚡', render: renderSkillsModule },
+    { key: 'certificates', title: '证书', icon: '🏆', render: renderCertModule },
+    { key: 'selfEval', title: '自我评价', icon: '💬', render: renderSelfEval },
+  ];
+
+  container.innerHTML = modules.map((m, i) => {
+    const count = m.key === 'basic' ? 1 : m.key === 'selfEval' ? (appData.selfEval ? 1 : 0) : (appData[m.key] || []).length;
+    return `
+      <div class="module-section ${i === 0 ? 'open' : ''}" id="module-${m.key}">
+        <div class="module-header" onclick="toggleModule('${m.key}')">
+          <span class="module-title">${m.icon} ${m.title} <span class="module-badge">${count}</span></span>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="module-body" id="body-${m.key}">
+          ${m.render(m.key)}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleModule(key) {
+  document.getElementById(`module-${key}`).classList.toggle('open');
+}
+
+// Basic info form
+function renderBasicInfo() {
+  const b = appData.basic;
+  const fields = [
+    ['name','姓名'], ['gender','性别'], ['birth','出生日期'],
+    ['email','邮箱'], ['phone','电话'], ['wechat','微信'],
+    ['city','期望城市'], ['targetPosition','期望职位'], ['targetSalary','期望薪资'],
+    ['github','GitHub'], ['linkedin','LinkedIn'], ['blog','个人主页/博客']
+  ];
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;">
+      ${fields.map(([k,label]) => `
+        <div class="form-group">
+          <label>${label}</label>
+          <input type="text" value="${escapeHtml(b[k]||'')}" onchange="appData.basic['${k}']=this.value;saveData()">
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// Self evaluation
+function renderSelfEval() {
+  return `
+    <div class="form-group">
+      <textarea rows="6" onchange="appData.selfEval=this.value;saveData()" placeholder="描述你的优势、特点、职业目标...">${escapeHtml(appData.selfEval||'')}</textarea>
+    </div>
+  `;
+}
+
+// Skills module
+function renderSkillsModule() {
+  const items = appData.skills || [];
+  let html = items.map((s, i) => `
+    <div class="item-card">
+      <div class="item-header">
+        <span class="item-title">${escapeHtml(s.name)}</span>
+        <span class="item-subtitle">${escapeHtml(s.level||'')}</span>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-outline btn-xs" onclick="editSkill(${i})">编辑</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteSkill(${i})">删除</button>
+      </div>
+    </div>
+  `).join('');
+  html += `<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addSkill()">+ 添加技能</button>`;
+  return html;
+}
+
+function renderCertModule() {
+  const items = appData.certificates || [];
+  let html = items.map((c, i) => `
+    <div class="item-card">
+      <div class="item-header">
+        <span class="item-title">${escapeHtml(c.name)}</span>
+        <span class="item-date">${escapeHtml(c.date||'')}</span>
+      </div>
+      <div class="item-subtitle">${escapeHtml(c.issuer||'')}</div>
+      <div class="item-actions">
+        <button class="btn btn-outline btn-xs" onclick="editCert(${i})">编辑</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteCert(${i})">删除</button>
+      </div>
+    </div>
+  `).join('');
+  html += `<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addCert()">+ 添加证书</button>`;
+  return html;
+}
+
+// Generic list module (education, work, internship, campus, projects)
+const eduFields = {
+  title: '学校', subtitle: '学历/专业', extra: [{ key: 'major', label: '专业' }, { key: 'gpa', label: 'GPA/排名' }, { key: 'courses', label: '主修课程' }],
+  dateLabel: '起止时间'
+};
+const workFields = {
+  title: '公司', subtitle: '职位', dateLabel: '起止时间', hasDesc: true, descLabel: '工作描述'
+};
+const internFields = {
+  title: '公司', subtitle: '职位', dateLabel: '起止时间', hasDesc: true, descLabel: '实习描述'
+};
+const campusFields = {
+  title: '组织/社团', subtitle: '角色', dateLabel: '起止时间', hasDesc: true, descLabel: '经历描述'
+};
+const projectFields = {
+  title: '项目名称', subtitle: '角色', dateLabel: '起止时间', hasDesc: true, descLabel: '项目描述'
+};
+
+function renderListModule(key) {
+  const items = appData[key] || [];
+  const fields = arguments.callee._fields || { title: '名称', subtitle: '副标题', dateLabel: '时间' };
+  let html = items.map((item, i) => `
+    <div class="item-card">
+      <div class="item-header">
+        <div>
+          <span class="item-title">${escapeHtml(item.title||'')}</span>
+          ${item.subtitle ? `<span class="item-subtitle"> · ${escapeHtml(item.subtitle)}</span>` : ''}
+        </div>
+        <span class="item-date">${escapeHtml(item.startDate||'')} ~ ${escapeHtml(item.endDate||'')}</span>
+      </div>
+      ${item.desc ? `<div class="item-desc">${escapeHtml(item.desc)}</div>` : ''}
+      ${item.tags && item.tags.length ? `<div class="item-tags">${item.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+      <div class="item-actions">
+        <button class="btn btn-outline btn-xs" onclick="editListItem('${key}',${i})">编辑</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteListItem('${key}',${i})">删除</button>
+      </div>
+    </div>
+  `).join('');
+  html += `<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addListItem('${key}')">+ 添加条目</button>`;
+  return html;
+}
+
+// ==================== CRUD OPERATIONS ====================
+function addListItem(key) {
+  const fieldConfigs = {
+    education: eduFields, work: workFields, internship: internFields, campus: campusFields, projects: projectFields
+  };
+  const cfg = fieldConfigs[key] || {};
+  const fields = [
+    { key: 'title', label: cfg.title || '名称', type: 'text' },
+    { key: 'subtitle', label: cfg.subtitle || '副标题', type: 'text' },
+    { key: 'startDate', label: cfg.dateLabel ? cfg.dateLabel.split('~')[0].trim() : '开始时间', type: 'text' },
+    { key: 'endDate', label: cfg.dateLabel ? cfg.dateLabel.split('~')[1]?.trim() || '结束时间' : '结束时间', type: 'text' },
+  ];
+  if (cfg.extra) {
+    cfg.extra.forEach(e => fields.push({ key: e.key, label: e.label, type: 'text' }));
+  }
+  if (cfg.hasDesc) {
+    fields.push({ key: 'desc', label: cfg.descLabel || '描述', type: 'textarea' });
+  }
+
+  const formHtml = fields.map(f => `
+    <div class="form-group">
+      <label>${f.label}</label>
+      ${f.type === 'textarea' ? `<textarea rows="4" id="f_${f.key}"></textarea>` : `<input type="text" id="f_${f.key}">`}
+    </div>
+  `).join('');
+
+  openModal(`添加${cfg.title||'条目'}`, formHtml, () => {
+    const item = {};
+    fields.forEach(f => {
+      const el = document.getElementById(`f_${f.key}`);
+      item[f.key] = el.value;
+    });
+    item.tags = extractTags((item.desc||'') + ' ' + (item.title||'') + ' ' + (item.subtitle||''));
+    if (!appData[key]) appData[key] = [];
+    appData[key].push(item);
+    saveData();
+  });
+}
+
+function editListItem(key, index) {
+  const item = appData[key][index];
+  const fieldConfigs = {
+    education: eduFields, work: workFields, internship: internFields, campus: campusFields, projects: projectFields
+  };
+  const cfg = fieldConfigs[key] || {};
+  const fields = [
+    { key: 'title', label: cfg.title || '名称', type: 'text' },
+    { key: 'subtitle', label: cfg.subtitle || '副标题', type: 'text' },
+    { key: 'startDate', label: cfg.dateLabel ? cfg.dateLabel.split('~')[0].trim() : '开始时间', type: 'text' },
+    { key: 'endDate', label: cfg.dateLabel ? cfg.dateLabel.split('~')[1]?.trim() || '结束时间' : '结束时间', type: 'text' },
+  ];
+  if (cfg.extra) {
+    cfg.extra.forEach(e => fields.push({ key: e.key, label: e.label, type: 'text' }));
+  }
+  if (cfg.hasDesc) {
+    fields.push({ key: 'desc', label: cfg.descLabel || '描述', type: 'textarea' });
+  }
+
+  const formHtml = fields.map(f => `
+    <div class="form-group">
+      <label>${f.label}</label>
+      ${f.type === 'textarea' ? `<textarea rows="4" id="f_${f.key}">${escapeHtml(item[f.key]||'')}</textarea>` : `<input type="text" id="f_${f.key}" value="${escapeHtml(item[f.key]||'')}">`}
+    </div>
+  `).join('');
+
+  openModal('编辑条目', formHtml, () => {
+    fields.forEach(f => {
+      const el = document.getElementById(`f_${f.key}`);
+      appData[key][index][f.key] = el.value;
+    });
+    appData[key][index].tags = extractTags((appData[key][index].desc||'') + ' ' + (appData[key][index].title||'') + ' ' + (appData[key][index].subtitle||''));
+    saveData();
+  });
+}
+
+function deleteListItem(key, index) {
+  if (confirm('确定删除此条目？')) {
+    appData[key].splice(index, 1);
+    saveData();
+    renderLibrary();
+  }
+}
+
+function addSkill() {
+  openModal('添加技能', `
+    <div class="form-group"><label>技能名称</label><input type="text" id="f_skillName"></div>
+    <div class="form-group"><label>熟练程度</label>
+      <select id="f_skillLevel">
+        <option value="了解">了解</option><option value="熟练">熟练</option><option value="掌握">掌握</option><option value="精通">精通</option>
+      </select>
+    </div>
+  `, () => {
+    if (!appData.skills) appData.skills = [];
+    appData.skills.push({ name: document.getElementById('f_skillName').value, level: document.getElementById('f_skillLevel').value });
+    saveData();
+  });
+}
+
+function editSkill(index) {
+  const s = appData.skills[index];
+  openModal('编辑技能', `
+    <div class="form-group"><label>技能名称</label><input type="text" id="f_skillName" value="${escapeHtml(s.name)}"></div>
+    <div class="form-group"><label>熟练程度</label>
+      <select id="f_skillLevel">
+        ${['了解','熟练','掌握','精通'].map(l => `<option value="${l}" ${s.level===l?'selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+  `, () => {
+    appData.skills[index] = { name: document.getElementById('f_skillName').value, level: document.getElementById('f_skillLevel').value };
+    saveData();
+  });
+}
+
+function deleteSkill(index) {
+  if (confirm('确定删除？')) { appData.skills.splice(index,1); saveData(); renderLibrary(); }
+}
+
+function addCert() {
+  openModal('添加证书', `
+    <div class="form-group"><label>证书名称</label><input type="text" id="f_certName"></div>
+    <div class="form-group"><label>颁发机构</label><input type="text" id="f_certIssuer"></div>
+    <div class="form-group"><label>获取时间</label><input type="text" id="f_certDate" placeholder="如 2023.06"></div>
+  `, () => {
+    if (!appData.certificates) appData.certificates = [];
+    appData.certificates.push({ name: document.getElementById('f_certName').value, issuer: document.getElementById('f_certIssuer').value, date: document.getElementById('f_certDate').value });
+    saveData();
+  });
+}
+
+function editCert(index) {
+  const c = appData.certificates[index];
+  openModal('编辑证书', `
+    <div class="form-group"><label>证书名称</label><input type="text" id="f_certName" value="${escapeHtml(c.name)}"></div>
+    <div class="form-group"><label>颁发机构</label><input type="text" id="f_certIssuer" value="${escapeHtml(c.issuer||'')}"></div>
+    <div class="form-group"><label>获取时间</label><input type="text" id="f_certDate" value="${escapeHtml(c.date||'')}"></div>
+  `, () => {
+    appData.certificates[index] = { name: document.getElementById('f_certName').value, issuer: document.getElementById('f_certIssuer').value, date: document.getElementById('f_certDate').value };
+    saveData();
+  });
+}
+
+function deleteCert(index) {
+  if (confirm('确定删除？')) { appData.certificates.splice(index,1); saveData(); renderLibrary(); }
+}
+
+// ==================== JD ANALYSIS ====================
+function analyzeJD() {
+  const text = document.getElementById('jdInput').value.trim();
+  if (!text) { showToast('请先粘贴 JD 内容', 'error'); return; }
+
+  const lower = text.toLowerCase();
+
+  // Extract tech keywords
+  const techs = TECH_KEYWORDS.filter(k => lower.includes(k.toLowerCase()));
+
+  // Extract years of experience
+  const yearMatches = text.match(/(\d+)\s*年(以上|经验|工作经验|开发经验|相关经验)/g) || [];
+  const years = yearMatches.map(m => m.replace(/[^0-9]/g,'')).filter(Number);
+
+  // Extract degree
+  const degrees = DEGREE_KEYWORDS.filter(k => text.includes(k));
+
+  // Extract soft skills
+  const softs = SOFT_KEYWORDS.filter(k => text.includes(k));
+
+  // Extract industry
+  const industries = INDUSTRY_KEYWORDS.filter(k => text.includes(k));
+
+  // Extract responsibility keywords (lines starting with numbers or bullets)
+  const dutyLines = text.split('\n').filter(l => /^[\d一二三四五六七八九十][\.\、\)）]/.test(l.trim()) || l.includes('负责') || l.includes('职责') || l.includes('要求'));
+
+  jdAnalysis = { techs, years, degrees, softs, industries, dutyLines, fullText: text };
+  renderJDAnalysis();
+  showToast('JD 分析完成！', 'success');
+}
+
+function renderJDAnalysis() {
+  if (!jdAnalysis) return;
+  const container = document.getElementById('jdResult');
+  const a = jdAnalysis;
+  container.innerHTML = `
+    <div class="jd-section">
+      <h4>🔧 技术/工具栈 (${a.techs.length})</h4>
+      <div class="tag-list">${a.techs.length ? a.techs.map(t => `<span class="tag match">${t}</span>`).join('') : '<span style="color:var(--text-secondary);font-size:13px;">未检测到</span>'}</div>
+    </div>
+    <div class="jd-section">
+      <h4>⏱️ 经验年限</h4>
+      <div class="tag-list">${a.years.length ? a.years.map(y => `<span class="tag high">${y}年</span>`).join('') : '<span style="color:var(--text-secondary);font-size:13px;">未检测到</span>'}</div>
+    </div>
+    <div class="jd-section">
+      <h4>🎓 学历要求</h4>
+      <div class="tag-list">${a.degrees.length ? a.degrees.map(d => `<span class="tag">${d}</span>`).join('') : '<span style="color:var(--text-secondary);font-size:13px;">未检测到</span>'}</div>
+    </div>
+    <div class="jd-section">
+      <h4>💡 软技能</h4>
+      <div class="tag-list">${a.softs.length ? a.softs.map(s => `<span class="tag match">${s}</span>`).join('') : '<span style="color:var(--text-secondary);font-size:13px;">未检测到</span>'}</div>
+    </div>
+    <div class="jd-section">
+      <h4>🏭 行业领域</h4>
+      <div class="tag-list">${a.industries.length ? a.industries.map(i => `<span class="tag">${i}</span>`).join('') : '<span style="color:var(--text-secondary);font-size:13px;">未检测到</span>'}</div>
+    </div>
+  `;
+}
+
+// ==================== MATCHING ENGINE ====================
+function getAllJDKeywords() {
+  if (!jdAnalysis) return [];
+  return [...jdAnalysis.techs, ...jdAnalysis.softs, ...jdAnalysis.industries, ...jdAnalysis.degrees];
+}
+
+function calculateMatchScore(item, jdKeywords) {
+  if (!item || !jdKeywords.length) return 0;
+  const text = ((item.title||'') + ' ' + (item.subtitle||'') + ' ' + (item.desc||'') + ' ' + (item.tags||[]).join(' ')).toLowerCase();
+  let score = 0;
+  const matched = [];
+  jdKeywords.forEach(kw => {
+    if (text.includes(kw.toLowerCase())) {
+      score += 1;
+      matched.push(kw);
+    }
+  });
+  // Normalize to 0-100
+  const normalized = jdKeywords.length > 0 ? Math.round((score / Math.min(jdKeywords.length, 20)) * 100) : 0;
+  return { score: Math.min(normalized, 100), matched };
+}
+
+function runMatching() {
+  if (!jdAnalysis) {
+    showToast('请先在 JD 分析 Tab 粘贴并分析 JD', 'error');
+    return;
+  }
+  const jdKeywords = getAllJDKeywords();
+  if (!jdKeywords.length) {
+    showToast('未从 JD 中提取到关键词', 'error');
+    return;
+  }
+
+  ['work','internship','projects','campus'].forEach(key => {
+    matchResults[key] = (appData[key]||[]).map((item, idx) => {
+      const { score, matched } = calculateMatchScore(item, jdKeywords);
+      return { ...item, _idx: idx, _score: score, _matched: matched, _selected: score >= 30 };
+    }).sort((a,b) => b._score - a._score);
+  });
+
+  renderMatchTab();
+  renderResumePreview();
+  showToast(`匹配完成！共 ${getTotalMatchedItems()} 条经历匹配`, 'success');
+}
+
+function getTotalMatchedItems() {
+  return Object.values(matchResults).flat().filter(i => i._score > 0).length;
+}
+
+function renderMatchTab() {
+  const container = document.getElementById('matchList');
+  if (!jdAnalysis) {
+    container.innerHTML = '<p class="empty-state"><span class="empty-icon">🔍</span><br>请先在 JD 分析 Tab 粘贴 JD，再点击"执行匹配"</p>';
+    return;
+  }
+
+  const sections = [
+    { key: 'work', label: '💼 工作经历', data: matchResults.work },
+    { key: 'internship', label: '📝 实习经历', data: matchResults.internship },
+    { key: 'projects', label: '🚀 项目经历', data: matchResults.projects },
+    { key: 'campus', label: '🏫 校园经历', data: matchResults.campus },
+  ];
+
+  let html = '';
+  sections.forEach(sec => {
+    if (!sec.data || !sec.data.length) return;
+    html += `<h3 style="margin-top:16px;">${sec.label}</h3>`;
+    sec.data.forEach(item => {
+      const scoreClass = item._score >= 60 ? 'high' : item._score >= 30 ? 'mid' : 'low';
+      const dateStr = [item.startDate, item.endDate].filter(Boolean).join(' ~ ');
+      html += `
+        <div class="match-item ${item._selected ? 'selected' : ''}" onclick="toggleMatchItem('${sec.key}',${item._idx})">
+          <input type="checkbox" ${item._selected ? 'checked' : ''} onclick="event.stopPropagation();toggleMatchItem('${sec.key}',${item._idx})">
+          <div class="match-info">
+            <div class="match-title">${escapeHtml(item.title||'')} ${item.subtitle ? '· '+escapeHtml(item.subtitle) : ''}</div>
+            <div class="match-subtitle">${escapeHtml(dateStr)}</div>
+            ${item._matched.length ? `<div class="item-tags" style="margin-top:4px;">${item._matched.map(t => `<span class="tag match">${t}</span>`).join('')}</div>` : ''}
+          </div>
+          <div class="match-score ${scoreClass}">${item._score}%</div>
+        </div>
+      `;
+    });
+  });
+
+  if (!html.trim()) {
+    html = '<p class="empty-state"><span class="empty-icon">😕</span><br>没有匹配到相关经历</p>';
+  }
+
+  container.innerHTML = html;
+}
+
+function toggleMatchItem(key, idx) {
+  const item = matchResults[key]?.find(i => i._idx === idx);
+  if (item) {
+    item._selected = !item._selected;
+    renderMatchTab();
+    renderResumePreview();
+  }
+}
+
+// ==================== RESUME PREVIEW ====================
+function getSelectedItems(key) {
+  return (matchResults[key]||[]).filter(i => i._selected);
+}
+
+function renderResumePreview() {
+  const b = appData.basic;
+  const jdKeywords = jdAnalysis ? getAllJDKeywords() : [];
+
+  // Helper: highlight matching keywords
+  function hl(text) {
+    if (!text || !jdKeywords.length) return escapeHtml(text||'');
+    let result = escapeHtml(text);
+    jdKeywords.forEach(kw => {
+      const escaped = escapeHtml(kw);
+      const regex = new RegExp(`(${escaped.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+      result = result.replace(regex, '<span class="highlight">$1</span>');
+    });
+    return result;
+  }
+
+  // Build contact line
+  const contactParts = [];
+  if (b.email) contactParts.push(`📧 ${b.email}`);
+  if (b.phone) contactParts.push(`📱 ${b.phone}`);
+  if (b.wechat) contactParts.push(`💬 ${b.wechat}`);
+  if (b.city) contactParts.push(`📍 ${b.city}`);
+  if (b.github) contactParts.push(`🔗 ${b.github}`);
+  if (b.linkedin) contactParts.push(`🔗 ${b.linkedin}`);
+  if (b.blog) contactParts.push(`🔗 ${b.blog}`);
+
+  let html = '';
+
+  // Name & Contact
+  if (b.name) {
+    html += `<div class="r-name">${escapeHtml(b.name)}</div>`;
+  }
+  if (contactParts.length) {
+    html += `<div class="r-contact">${contactParts.join(' &nbsp;|&nbsp; ')}</div>`;
+  }
+
+  // Self evaluation
+  if (appData.selfEval) {
+    html += `
+      <div class="r-section">
+        <div class="r-section-title">自我评价</div>
+        <div class="r-item-desc">${hl(appData.selfEval)}</div>
+      </div>
+    `;
+  }
+
+  // Work experience
+  const selectedWork = getSelectedItems('work');
+  if (selectedWork.length) {
+    html += `<div class="r-section"><div class="r-section-title">工作经历</div>`;
+    selectedWork.forEach(item => {
+      html += `
+        <div class="r-item">
+          <div class="r-item-header">
+            <span class="r-item-title">${escapeHtml(item.title||'')} ${item.subtitle ? '| '+escapeHtml(item.subtitle) : ''}</span>
+            <span class="r-item-date">${[item.startDate,item.endDate].filter(Boolean).join(' - ')}</span>
+          </div>
+          ${item.desc ? `<div class="r-item-desc">${hl(item.desc)}</div>` : ''}
+        </div>
+      `;
+    });
+    html += `</div>`;
+  }
+
+  // Internship
+  const selectedIntern = getSelectedItems('internship');
+  if (selectedIntern.length) {
+    html += `<div class="r-section"><div class="r-section-title">实习经历</div>`;
+    selectedIntern.forEach(item => {
+      html += `
+        <div class="r-item">
+          <div class="r-item-header">
+            <span class="r-item-title">${escapeHtml(item.title||'')} ${item.subtitle ? '| '+escapeHtml(item.subtitle) : ''}</span>
+            <span class="r-item-date">${[item.startDate,item.endDate].filter(Boolean).join(' - ')}</span>
+          </div>
+          ${item.desc ? `<div class="r-item-desc">${hl(item.desc)}</div>` : ''}
+        </div>
+      `;
+    });
+    html += `</div>`;
+  }
+
+  // Projects
+  const selectedProjects = getSelectedItems('projects');
+  if (selectedProjects.length) {
+    html += `<div class="r-section"><div class="r-section-title">项目经历</div>`;
+    selectedProjects.forEach(item => {
+      html += `
+        <div class="r-item">
+          <div class="r-item-header">
+            <span class="r-item-title">${escapeHtml(item.title||'')} ${item.subtitle ? '| '+escapeHtml(item.subtitle) : ''}</span>
+            <span class="r-item-date">${[item.startDate,item.endDate].filter(Boolean).join(' - ')}</span>
+          </div>
+          ${item.desc ? `<div class="r-item-desc">${hl(item.desc)}</div>` : ''}
+        </div>
+      `;
+    });
+    html += `</div>`;
+  }
+
+  // Education
+  const eduItems = appData.education || [];
+  if (eduItems.length) {
+    html += `<div class="r-section"><div class="r-section-title">教育经历</div>`;
+    eduItems.forEach(item => {
+      html += `
+        <div class="r-item">
+          <div class="r-item-header">
+            <span class="r-item-title">${escapeHtml(item.title||'')} ${item.subtitle ? '| '+escapeHtml(item.subtitle) : ''} ${item.major ? '| '+escapeHtml(item.major) : ''}</span>
+            <span class="r-item-date">${[item.startDate,item.endDate].filter(Boolean).join(' - ')}</span>
+          </div>
+          ${item.gpa ? `<div class="r-item-sub">GPA: ${escapeHtml(item.gpa)}</div>` : ''}
+          ${item.courses ? `<div class="r-item-sub">主修课程: ${escapeHtml(item.courses)}</div>` : ''}
+        </div>
+      `;
+    });
+    html += `</div>`;
+  }
+
+  // Campus
+  const selectedCampus = getSelectedItems('campus');
+  if (selectedCampus.length) {
+    html += `<div class="r-section"><div class="r-section-title">校园经历</div>`;
+    selectedCampus.forEach(item => {
+      html += `
+        <div class="r-item">
+          <div class="r-item-header">
+            <span class="r-item-title">${escapeHtml(item.title||'')} ${item.subtitle ? '| '+escapeHtml(item.subtitle) : ''}</span>
+            <span class="r-item-date">${[item.startDate,item.endDate].filter(Boolean).join(' - ')}</span>
+          </div>
+          ${item.desc ? `<div class="r-item-desc">${hl(item.desc)}</div>` : ''}
+        </div>
+      `;
+    });
+    html += `</div>`;
+  }
+
+  // Skills
+  const skills = appData.skills || [];
+  if (skills.length) {
+    html += `<div class="r-section"><div class="r-section-title">技能</div>`;
+    html += `<div class="r-skills">${skills.map(s => `<span class="r-skill">${escapeHtml(s.name)}${s.level ? '（'+escapeHtml(s.level)+'）' : ''}</span>`).join('')}</div>`;
+    html += `</div>`;
+  }
+
+  // Certificates
+  const certs = appData.certificates || [];
+  if (certs.length) {
+    html += `<div class="r-section"><div class="r-section-title">证书</div>`;
+    html += certs.map(c => `<div style="font-size:13px;">📜 ${escapeHtml(c.name)} ${c.issuer ? '— '+escapeHtml(c.issuer) : ''} ${c.date ? '('+escapeHtml(c.date)+')' : ''}</div>`).join('');
+    html += `</div>`;
+  }
+
+  document.getElementById('preview-web').innerHTML = html || '<p style="text-align:center;color:#999;padding:60px 0;">简历预览将在此显示<br>请先录入信息并在 JD 分析 Tab 粘贴 JD，然后执行匹配</p>';
+  document.getElementById('preview-text').textContent = generatePlainText();
+}
+
+function generatePlainText() {
+  const b = appData.basic;
+  let text = '';
+
+  // Name
+  if (b.name) text += `${b.name}\n`;
+
+  // Contact
+  const contact = [];
+  if (b.email) contact.push(b.email);
+  if (b.phone) contact.push(b.phone);
+  if (b.wechat) contact.push(`微信: ${b.wechat}`);
+  if (b.city) contact.push(b.city);
+  if (b.github) contact.push(b.github);
+  if (b.linkedin) contact.push(b.linkedin);
+  if (b.blog) contact.push(b.blog);
+  if (contact.length) text += `${contact.join(' | ')}\n`;
+  text += '\n';
+
+  // Self eval
+  if (appData.selfEval) {
+    text += `【自我评价】\n${appData.selfEval}\n\n`;
+  }
+
+  // Work
+  const workItems = getSelectedItems('work');
+  if (workItems.length) {
+    text += `【工作经历】\n`;
+    workItems.forEach(item => {
+      text += `${item.title || ''} | ${item.subtitle || ''}`;
+      const dates = [item.startDate, item.endDate].filter(Boolean).join(' - ');
+      if (dates) text += `  ${dates}`;
+      text += '\n';
+      if (item.desc) text += `${item.desc}\n`;
+      text += '\n';
+    });
+  }
+
+  // Internship
+  const internItems = getSelectedItems('internship');
+  if (internItems.length) {
+    text += `【实习经历】\n`;
+    internItems.forEach(item => {
+      text += `${item.title || ''} | ${item.subtitle || ''}`;
+      const dates = [item.startDate, item.endDate].filter(Boolean).join(' - ');
+      if (dates) text += `  ${dates}`;
+      text += '\n';
+      if (item.desc) text += `${item.desc}\n`;
+      text += '\n';
+    });
+  }
+
+  // Projects
+  const projItems = getSelectedItems('projects');
+  if (projItems.length) {
+    text += `【项目经历】\n`;
+    projItems.forEach(item => {
+      text += `${item.title || ''} | ${item.subtitle || ''}`;
+      const dates = [item.startDate, item.endDate].filter(Boolean).join(' - ');
+      if (dates) text += `  ${dates}`;
+      text += '\n';
+      if (item.desc) text += `${item.desc}\n`;
+      text += '\n';
+    });
+  }
+
+  // Education
+  const eduItems = appData.education || [];
+  if (eduItems.length) {
+    text += `【教育经历】\n`;
+    eduItems.forEach(item => {
+      text += `${item.title || ''} | ${item.subtitle || ''}`;
+      if (item.major) text += ` | ${item.major}`;
+      const dates = [item.startDate, item.endDate].filter(Boolean).join(' - ');
+      if (dates) text += `  ${dates}`;
+      text += '\n';
+      if (item.gpa) text += `GPA: ${item.gpa}\n`;
+      if (item.courses) text += `主修课程: ${item.courses}\n`;
+      text += '\n';
+    });
+  }
+
+  // Campus
+  const campusItems = getSelectedItems('campus');
+  if (campusItems.length) {
+    text += `【校园经历】\n`;
+    campusItems.forEach(item => {
+      text += `${item.title || ''} | ${item.subtitle || ''}`;
+      const dates = [item.startDate, item.endDate].filter(Boolean).join(' - ');
+      if (dates) text += `  ${dates}`;
+      text += '\n';
+      if (item.desc) text += `${item.desc}\n`;
+      text += '\n';
+    });
+  }
+
+  // Skills
+  const skills = appData.skills || [];
+  if (skills.length) {
+    text += `【技能】\n`;
+    text += skills.map(s => `${s.name}${s.level ? '（'+s.level+'）' : ''}`).join('、');
+    text += '\n\n';
+  }
+
+  // Certificates
+  const certs = appData.certificates || [];
+  if (certs.length) {
+    text += `【证书】\n`;
+    text += certs.map(c => `${c.name}${c.issuer?' — '+c.issuer:''}${c.date?' ('+c.date+')':''}`).join('\n');
+    text += '\n';
+  }
+
+  return text.trim();
+}
+
+// ==================== EXPORT ====================
+function exportData() {
+  const json = JSON.stringify(appData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'resume-data.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('数据已导出', 'success');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      appData = { ...JSON.parse(JSON.stringify(DEFAULT_DATA)), ...data };
+      saveData();
+      renderLibrary();
+      showToast('数据导入成功！', 'success');
+    } catch(err) {
+      showToast('导入失败：JSON 格式错误', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function printResume() {
+  window.print();
+}
+
+function copyPlainText() {
+  const text = generatePlainText();
+  if (!text.trim()) {
+    showToast('没有可复制的内容，请先生成简历', 'error');
+    return;
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('纯文本简历已复制到剪贴板', 'success');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('纯文本简历已复制到剪贴板', 'success');
+  });
+}
+
+// ==================== SAMPLE DATA ====================
+function loadSampleData() {
+  try {
+    appData = {
+      basic: {
+        name: '张三', gender: '男', birth: '1998.05', email: 'zhangsan@example.com',
+        phone: '138-0000-0000', wechat: 'zhangsan_wx', city: '深圳',
+        targetPosition: '高级前端工程师', targetSalary: '25-35K',
+        github: 'github.com/zhangsan', linkedin: 'linkedin.com/in/zhangsan', blog: 'zhangsan.dev'
+      },
+      education: [
+        { title: '清华大学', subtitle: '硕士', major: '计算机科学与技术', startDate: '2020.09', endDate: '2023.06', gpa: '3.8/4.0', courses: '数据结构、算法设计、操作系统、计算机网络', tags: ['计算机科学','算法','数据结构'] },
+        { title: '华中科技大学', subtitle: '本科', major: '软件工程', startDate: '2016.09', endDate: '2020.06', gpa: '3.6/4.0', courses: '程序设计、数据库、Web开发', tags: ['软件工程'] }
+      ],
+      work: [
+        { title: '字节跳动', subtitle: '前端开发工程师', startDate: '2023.07', endDate: '至今', desc: '负责抖音电商后台管理系统的前端架构设计与开发，使用 React + TypeScript + Ant Design 技术栈。\n主导前端性能优化专项，首屏加载时间从 4.2s 降至 1.8s，LCP 提升 60%。\n搭建团队前端 CI/CD 流水线，集成 ESLint + Prettier + Husky，代码质量显著提升。\n参与跨团队微前端架构落地，基于 qiankun 实现 3 个子应用的统一管理。', tags: ['React','TypeScript','微前端','性能优化','CI/CD'] },
+        { title: '腾讯', subtitle: '前端开发实习生', startDate: '2022.03', endDate: '2022.09', desc: '参与腾讯云控制台前端开发，使用 Vue + Element UI 技术栈。\n独立完成云服务器管理模块的前端开发，包含实例列表、监控面板等功能。\n编写前端单元测试，测试覆盖率达到 85%。', tags: ['Vue','Element UI','腾讯云','单元测试'] }
+      ],
+      internship: [
+        { title: '阿里巴巴', subtitle: '前端开发实习生', startDate: '2021.06', endDate: '2021.09', desc: '参与淘宝商家后台系统的前端开发，使用 React + Ant Design Pro。\n实现商品管理模块的批量操作功能，提升商家操作效率。\n参与前端组件库建设，封装通用表单组件、表格组件等 10+ 个业务组件。', tags: ['React','Ant Design','组件库'] }
+      ],
+      campus: [
+        { title: '清华大学计算机系学生会', subtitle: '技术部部长', startDate: '2021.09', endDate: '2022.06', desc: '组织系内 Hackathon 活动，参与人数 200+。负责活动平台的前端开发。', tags: ['领导力','活动组织'] }
+      ],
+      projects: [
+        { title: 'CodeShare - 在线协作代码编辑器', subtitle: '项目负责人 & 全栈开发', startDate: '2022.01', endDate: '2022.06', desc: '基于 WebSocket + Monaco Editor 实现多人实时协作编辑。\n使用 Node.js + Express + MongoDB 构建后端，React + TypeScript 构建前端。\n支持代码高亮、自动补全、版本对比等功能。\nGitHub 获得 500+ Star，被阮一峰周刊推荐。', tags: ['React','TypeScript','Node.js','WebSocket','MongoDB','Express'] },
+        { title: '智能简历生成器', subtitle: '独立开发', startDate: '2023.01', endDate: '2023.02', desc: '纯前端简历生成工具，支持经历库管理和 JD 智能匹配。\n使用原生 JavaScript + CSS 实现，零依赖，响应式设计。\n实现关键词提取、匹配度打分、简历排版等核心功能。', tags: ['JavaScript','CSS','响应式设计'] }
+      ],
+      skills: [
+        { name: 'JavaScript/TypeScript', level: '精通' },
+        { name: 'React/Vue', level: '精通' },
+        { name: 'Node.js', level: '掌握' },
+        { name: 'CSS/Sass/Tailwind', level: '精通' },
+        { name: 'Webpack/Vite', level: '掌握' },
+        { name: 'Docker', level: '熟练' },
+        { name: 'MySQL/MongoDB', level: '掌握' },
+        { name: 'Git', level: '精通' },
+        { name: 'Python', level: '熟练' },
+        { name: 'Figma', level: '熟练' }
+      ],
+      certificates: [
+        { name: 'AWS Solutions Architect Associate', issuer: 'AWS', date: '2022.08' },
+        { name: 'CET-6 (580)', issuer: '教育部', date: '2019.06' }
+      ],
+      selfEval: '5年前端开发经验，精通 React/Vue 生态，具备全栈开发能力。\n主导过大型项目前端架构设计，有性能优化和工程化实践经验。\n具备良好的沟通能力和团队协作精神，善于技术分享和文档沉淀。\n持续关注前端技术发展，对 AI + 前端方向有浓厚兴趣。'
+    };
+    saveData();
+    renderLibrary();
+    // Also set sample JD
+    document.getElementById('jdInput').value = `高级前端开发工程师
+
+【岗位职责】
+1. 负责公司核心产品的前端架构设计与开发
+2. 参与前端技术选型和基础设施建设
+3. 优化前端性能，提升用户体验
+4. 指导和培养初级前端工程师
+5. 参与跨团队技术方案评审
+
+【任职要求】
+1. 本科及以上学历，计算机相关专业
+2. 3年以上前端开发经验，精通 React 或 Vue 框架
+3. 精通 JavaScript/TypeScript，熟悉 ES6+ 特性
+4. 有性能优化经验，熟悉前端性能分析和调优
+5. 了解 Node.js，有全栈开发能力者优先
+6. 熟悉前端工程化，了解 Webpack/Vite 等构建工具
+7. 有微前端或大型项目经验者优先
+8. 具备良好的沟通能力和团队协作精神`;
+    analyzeJD();
+    runMatching();
+    showToast('示例数据已加载，JD 已自动分析匹配', 'success');
+  } catch(err) {
+    console.error('loadSampleData error:', err);
+    showToast('加载失败: ' + err.message, 'error');
+  }
+}
+
+// ==================== UTILS ====================
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', () => {
+  renderLibrary();
+});
+
+// Close modal on overlay click
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Keyboard shortcut: Ctrl+S to save
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    saveData();
+    showToast('数据已保存', 'success');
+  }
+});
+</script>
+</body>
+</html>
