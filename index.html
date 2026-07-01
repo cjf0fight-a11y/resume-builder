@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -286,6 +287,20 @@ h3 { font-size: 16px; margin-bottom: 12px; color: var(--text); }
 }
 .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
 
+/* Loading spinner */
+.spinner {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3); border-radius: 50%;
+  border-top-color: #fff; animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Match reason */
+.match-reason {
+  font-size: 12px; color: var(--text-secondary); margin-top: 4px;
+  padding: 4px 8px; background: #f8f9fa; border-radius: 4px;
+}
+
 @media (max-width: 768px) {
   .sidebar { min-width: 60px; width: 60px; }
   .sidebar .logo { font-size: 14px; padding: 0 12px 20px; }
@@ -347,7 +362,7 @@ h3 { font-size: 16px; margin-bottom: 12px; color: var(--text); }
 <section class="tab-content" id="tab-jd">
   <h2>🔍 JD 分析</h2>
   <p class="subtitle">粘贴职位描述，自动提取关键要求</p>
-  <textarea class="jd-textarea" id="jdInput" placeholder="在此粘贴职位 JD（岗位描述）...&#10;&#10;例如：&#10;岗位职责：&#10;1. 负责后端服务架构设计与开发&#10;2. 参与系统性能优化...&#10;&#10;任职要求：&#10;1. 本科及以上学历，3年以上 Python 开发经验&#10;2. 精通 Django/Flask，熟悉 MySQL、Redis&#10;3. 具备良好的沟通能力和团队协作精神..."></textarea>
+  <textarea class="jd-textarea" id="jdInput" placeholder="在此粘贴职位 JD（岗位描述）..."></textarea>
   <div style="margin-top:12px;">
     <button class="btn btn-primary" onclick="analyzeJD()">🔬 分析 JD</button>
   </div>
@@ -358,7 +373,10 @@ h3 { font-size: 16px; margin-bottom: 12px; color: var(--text); }
 <section class="tab-content" id="tab-match">
   <h2>🎯 匹配 & 简历预览</h2>
   <p class="subtitle">先到 JD 分析 Tab 粘贴 JD，然后回到这里查看匹配结果</p>
-  <button class="btn btn-primary" onclick="runMatching()" style="margin-bottom:16px;">🔄 执行匹配</button>
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="runMatching()" style="margin-bottom:16px;">🔄 基础匹配</button>
+    <button class="btn btn-primary" onclick="runSmartMatching()" style="margin-bottom:16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">🤖 AI 智能匹配</button>
+  </div>
   <div style="display:flex; gap:24px; flex-wrap:wrap;">
     <div style="flex:1; min-width:300px;" class="match-list-area" id="matchList">
       <p class="empty-state"><span class="empty-icon">🔍</span><br>请先在 JD 分析 Tab 粘贴 JD，再点击"执行匹配"</p>
@@ -507,9 +525,33 @@ const TECH_KEYWORDS = [
   '敏捷开发','Scrum','项目管理','Jira','Confluence','Notion',
   '微服务','分布式','高并发','高可用','性能优化','系统设计',
 ];
+
 const SOFT_KEYWORDS = ['沟通','团队协作','领导力','自驱','抗压','学习能力','解决问题','逻辑思维','创新','执行力','责任心','细节','时间管理','多任务','跨部门','英语','日语'];
 const DEGREE_KEYWORDS = ['本科','硕士','博士','MBA','大专','985','211','双一流'];
 const INDUSTRY_KEYWORDS = ['金融','电商','教育','医疗','游戏','SaaS','社交','广告','物联网','AI','区块链','新能源','汽车','零售','物流','房地产'];
+
+// Synonym dictionary for smarter matching
+const SYNONYMS = {
+  '开发': ['编程', 'coding', 'programming', '写代码'],
+  '前端': ['frontend', 'front-end', '客户端', 'web端'],
+  '后端': ['backend', 'back-end', '服务器端', 'server端'],
+  '全栈': ['fullstack', 'full-stack', '前后端'],
+  '架构': ['architecture', '设计', '系统设计'],
+  '优化': ['调优', '提升', '改进', 'performance'],
+  '管理': ['manage', 'management', '带团队', '带领'],
+  '设计': ['design', '架构设计', '方案设计'],
+  '测试': ['test', 'QA', '质量保证', '自动化测试'],
+  '部署': ['deploy', 'release', '发布', '上线'],
+  '数据库': ['DB', 'database', '存储'],
+  '算法': ['algorithm', '数据结构', 'data structure'],
+  '性能': ['performance', '速度', '效率'],
+  '安全': ['security', '权限', '认证'],
+  '移动端': ['mobile', 'iOS', 'Android', 'app', 'APP'],
+  '大数据': ['big data', '数据处理', '数据分析'],
+  '人工智能': ['AI', '机器学习', '深度学习', 'ML', 'DL'],
+  '沟通': ['communication', '交流', '协作'],
+  '领导': ['lead', 'leader', '负责人', '主管'],
+};
 
 function extractTags(text) {
   if (!text) return [];
@@ -532,11 +574,11 @@ function renderLibrary() {
   const container = document.getElementById('libraryModules');
   const modules = [
     { key: 'basic', title: '基本信息', icon: '👤', render: renderBasicInfo },
-    { key: 'education', title: '教育经历', icon: '🎓', render: renderListModule, fields: eduFields },
-    { key: 'work', title: '工作经历', icon: '💼', render: renderListModule, fields: workFields },
-    { key: 'internship', title: '实习经历', icon: '📝', render: renderListModule, fields: internFields },
-    { key: 'campus', title: '校园经历', icon: '🏫', render: renderListModule, fields: campusFields },
-    { key: 'projects', title: '项目经历', icon: '🚀', render: renderListModule, fields: projectFields },
+    { key: 'education', title: '教育经历', icon: '🎓', render: renderListModule, fields: 'edu' },
+    { key: 'work', title: '工作经历', icon: '💼', render: renderListModule, fields: 'work' },
+    { key: 'internship', title: '实习经历', icon: '📝', render: renderListModule, fields: 'intern' },
+    { key: 'campus', title: '校园经历', icon: '🏫', render: renderListModule, fields: 'campus' },
+    { key: 'projects', title: '项目经历', icon: '🚀', render: renderListModule, fields: 'project' },
     { key: 'skills', title: '技能', icon: '⚡', render: renderSkillsModule },
     { key: 'certificates', title: '证书', icon: '🏆', render: renderCertModule },
     { key: 'selfEval', title: '自我评价', icon: '💬', render: renderSelfEval },
@@ -551,7 +593,7 @@ function renderLibrary() {
           <span class="arrow">▶</span>
         </div>
         <div class="module-body" id="body-${m.key}">
-          ${m.render(m.key)}
+          ${m.render(m.key, m.fields)}
         </div>
       </div>
     `;
@@ -630,27 +672,17 @@ function renderCertModule() {
   return html;
 }
 
-// Generic list module (education, work, internship, campus, projects)
-const eduFields = {
-  title: '学校', subtitle: '学历/专业', extra: [{ key: 'major', label: '专业' }, { key: 'gpa', label: 'GPA/排名' }, { key: 'courses', label: '主修课程' }],
-  dateLabel: '起止时间'
-};
-const workFields = {
-  title: '公司', subtitle: '职位', dateLabel: '起止时间', hasDesc: true, descLabel: '工作描述'
-};
-const internFields = {
-  title: '公司', subtitle: '职位', dateLabel: '起止时间', hasDesc: true, descLabel: '实习描述'
-};
-const campusFields = {
-  title: '组织/社团', subtitle: '角色', dateLabel: '起止时间', hasDesc: true, descLabel: '经历描述'
-};
-const projectFields = {
-  title: '项目名称', subtitle: '角色', dateLabel: '起止时间', hasDesc: true, descLabel: '项目描述'
-};
-
-function renderListModule(key) {
+// Generic list module
+function renderListModule(key, fieldsType) {
   const items = appData[key] || [];
-  const fields = arguments.callee._fields || { title: '名称', subtitle: '副标题', dateLabel: '时间' };
+  const cfg = {
+    'edu': { title: '学校', subtitle: '学历/专业', extra: [{ key: 'major', label: '专业' }, { key: 'gpa', label: 'GPA/排名' }, { key: 'courses', label: '主修课程' }], dateLabel: '起止时间' },
+    'work': { title: '公司', subtitle: '职位', dateLabel: '起止时间', hasDesc: true, descLabel: '工作描述' },
+    'intern': { title: '公司', subtitle: '职位', dateLabel: '起止时间', hasDesc: true, descLabel: '实习描述' },
+    'campus': { title: '组织/社团', subtitle: '角色', dateLabel: '起止时间', hasDesc: true, descLabel: '经历描述' },
+    'project': { title: '项目名称', subtitle: '角色', dateLabel: '起止时间', hasDesc: true, descLabel: '项目描述' },
+  }[fieldsType] || {};
+  
   let html = items.map((item, i) => `
     <div class="item-card">
       <div class="item-header">
@@ -668,21 +700,25 @@ function renderListModule(key) {
       </div>
     </div>
   `).join('');
-  html += `<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addListItem('${key}')">+ 添加条目</button>`;
+  html += `<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addListItem('${key}','${fieldsType}')">+ 添加条目</button>`;
   return html;
 }
 
 // ==================== CRUD OPERATIONS ====================
-function addListItem(key) {
-  const fieldConfigs = {
-    education: eduFields, work: workFields, internship: internFields, campus: campusFields, projects: projectFields
-  };
-  const cfg = fieldConfigs[key] || {};
+function addListItem(key, fieldsType) {
+  const cfg = {
+    'edu': { title: '学校', subtitle: '学历/专业', extra: [{ key: 'major', label: '专业' }, { key: 'gpa', label: 'GPA/排名' }, { key: 'courses', label: '主修课程' }], dateLabel: '起止时间' },
+    'work': { title: '公司', subtitle: '职位', dateLabel: '起止时间', hasDesc: true, descLabel: '工作描述' },
+    'intern': { title: '公司', subtitle: '职位', dateLabel: '起止时间', hasDesc: true, descLabel: '实习描述' },
+    'campus': { title: '组织/社团', subtitle: '角色', dateLabel: '起止时间', hasDesc: true, descLabel: '经历描述' },
+    'project': { title: '项目名称', subtitle: '角色', dateLabel: '起止时间', hasDesc: true, descLabel: '项目描述' },
+  }[fieldsType] || {};
+  
   const fields = [
     { key: 'title', label: cfg.title || '名称', type: 'text' },
     { key: 'subtitle', label: cfg.subtitle || '副标题', type: 'text' },
-    { key: 'startDate', label: cfg.dateLabel ? cfg.dateLabel.split('~')[0].trim() : '开始时间', type: 'text' },
-    { key: 'endDate', label: cfg.dateLabel ? cfg.dateLabel.split('~')[1]?.trim() || '结束时间' : '结束时间', type: 'text' },
+    { key: 'startDate', label: '开始时间', type: 'text' },
+    { key: 'endDate', label: '结束时间', type: 'text' },
   ];
   if (cfg.extra) {
     cfg.extra.forEach(e => fields.push({ key: e.key, label: e.label, type: 'text' }));
@@ -713,22 +749,22 @@ function addListItem(key) {
 
 function editListItem(key, index) {
   const item = appData[key][index];
-  const fieldConfigs = {
-    education: eduFields, work: workFields, internship: internFields, campus: campusFields, projects: projectFields
-  };
-  const cfg = fieldConfigs[key] || {};
+  const cfg = {
+    'edu': { title: '学校', subtitle: '学历/专业', extra: [{ key: 'major', label: '专业' }, { key: 'gpa', label: 'GPA/排名' }, { key: 'courses', label: '主修课程' }], dateLabel: '起止时间' },
+    'work': { title: '公司', subtitle: '职位', dateLabel: '起止时间', hasDesc: true, descLabel: '工作描述' },
+    'intern': { title: '公司', subtitle: '职位', dateLabel: '起止时间', hasDesc: true, descLabel: '实习描述' },
+    'campus': { title: '组织/社团', subtitle: '角色', dateLabel: '起止时间', hasDesc: true, descLabel: '经历描述' },
+    'project': { title: '项目名称', subtitle: '角色', dateLabel: '起止时间', hasDesc: true, descLabel: '项目描述' },
+  }['edu'] || {};
+  
+  // Simplified: just show all fields
   const fields = [
-    { key: 'title', label: cfg.title || '名称', type: 'text' },
-    { key: 'subtitle', label: cfg.subtitle || '副标题', type: 'text' },
-    { key: 'startDate', label: cfg.dateLabel ? cfg.dateLabel.split('~')[0].trim() : '开始时间', type: 'text' },
-    { key: 'endDate', label: cfg.dateLabel ? cfg.dateLabel.split('~')[1]?.trim() || '结束时间' : '结束时间', type: 'text' },
+    { key: 'title', label: '名称', type: 'text' },
+    { key: 'subtitle', label: '副标题', type: 'text' },
+    { key: 'startDate', label: '开始时间', type: 'text' },
+    { key: 'endDate', label: '结束时间', type: 'text' },
+    { key: 'desc', label: '描述', type: 'textarea' },
   ];
-  if (cfg.extra) {
-    cfg.extra.forEach(e => fields.push({ key: e.key, label: e.label, type: 'text' }));
-  }
-  if (cfg.hasDesc) {
-    fields.push({ key: 'desc', label: cfg.descLabel || '描述', type: 'textarea' });
-  }
 
   const formHtml = fields.map(f => `
     <div class="form-group">
@@ -840,10 +876,7 @@ function analyzeJD() {
   // Extract industry
   const industries = INDUSTRY_KEYWORDS.filter(k => text.includes(k));
 
-  // Extract responsibility keywords (lines starting with numbers or bullets)
-  const dutyLines = text.split('\n').filter(l => /^[\d一二三四五六七八九十][\.\、\)）]/.test(l.trim()) || l.includes('负责') || l.includes('职责') || l.includes('要求'));
-
-  jdAnalysis = { techs, years, degrees, softs, industries, dutyLines, fullText: text };
+  jdAnalysis = { techs, years, degrees, softs, industries, fullText: text };
   renderJDAnalysis();
   showToast('JD 分析完成！', 'success');
 }
@@ -876,26 +909,138 @@ function renderJDAnalysis() {
   `;
 }
 
-// ==================== MATCHING ENGINE ====================
-function getAllJDKeywords() {
-  if (!jdAnalysis) return [];
-  return [...jdAnalysis.techs, ...jdAnalysis.softs, ...jdAnalysis.industries, ...jdAnalysis.degrees];
+// ==================== SMART MATCHING (TF-IDF + Cosine Similarity) ====================
+function tokenize(text) {
+  if (!text) return [];
+  // Simple tokenizer: split by whitespace and punctuation, keep Chinese and English
+  const tokens = text.toLowerCase()
+    .replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 0);
+  return tokens;
 }
 
-function calculateMatchScore(item, jdKeywords) {
-  if (!item || !jdKeywords.length) return 0;
-  const text = ((item.title||'') + ' ' + (item.subtitle||'') + ' ' + (item.desc||'') + ' ' + (item.tags||[]).join(' ')).toLowerCase();
-  let score = 0;
-  const matched = [];
-  jdKeywords.forEach(kw => {
-    if (text.includes(kw.toLowerCase())) {
-      score += 1;
-      matched.push(kw);
+function expandSynonyms(tokens) {
+  const expanded = new Set(tokens);
+  tokens.forEach(token => {
+    Object.keys(SYNONYMS).forEach(key => {
+      if (key.includes(token) || token.includes(key)) {
+        SYNONYMS[key].forEach(syn => expanded.add(syn.toLowerCase()));
+      }
+    });
+  });
+  return Array.from(expanded);
+}
+
+function calculateTF(tokens) {
+  const tf = {};
+  tokens.forEach(token => {
+    tf[token] = (tf[token] || 0) + 1;
+  });
+  // Normalize
+  const maxCount = Math.max(...Object.values(tf));
+  Object.keys(tf).forEach(k => {
+    tf[k] = tf[k] / maxCount;
+  });
+  return tf;
+}
+
+function cosineSimilarity(tf1, tf2) {
+  const allKeys = new Set([...Object.keys(tf1), ...Object.keys(tf2)]);
+  let dotProduct = 0;
+  let mag1 = 0;
+  let mag2 = 0;
+  
+  allKeys.forEach(key => {
+    const v1 = tf1[key] || 0;
+    const v2 = tf2[key] || 0;
+    dotProduct += v1 * v2;
+    mag1 += v1 * v1;
+    mag2 += v2 * v2;
+  });
+  
+  mag1 = Math.sqrt(mag1);
+  mag2 = Math.sqrt(mag2);
+  
+  if (mag1 === 0 || mag2 === 0) return 0;
+  return dotProduct / (mag1 * mag2);
+}
+
+function smartMatch(item, jdText) {
+  // Combine item text
+  const itemText = [
+    item.title || '',
+    item.subtitle || '',
+    item.desc || '',
+    (item.tags || []).join(' ')
+  ].join(' ');
+  
+  // Tokenize and expand synonyms
+  const itemTokens = expandSynonyms(tokenize(itemText));
+  const jdTokens = expandSynonyms(tokenize(jdText));
+  
+  // Calculate TF
+  const itemTF = calculateTF(itemTokens);
+  const jdTF = calculateTF(jdTokens);
+  
+  // Calculate cosine similarity
+  const similarity = cosineSimilarity(itemTF, jdTF);
+  
+  // Convert to percentage (similarity ranges from 0 to 1)
+  let score = Math.round(similarity * 100);
+  
+  // Boost score if key technologies match
+  const jdTechs = jdAnalysis ? jdAnalysis.techs : [];
+  const itemTechs = item.tags || [];
+  let matchedTechs = [];
+  jdTechs.forEach(tech => {
+    if (itemTechs.some(t => t.toLowerCase() === tech.toLowerCase())) {
+      matchedTechs.push(tech);
+      score = Math.min(score + 10, 100); // Boost by 10 for each matched tech
     }
   });
-  // Normalize to 0-100
-  const normalized = jdKeywords.length > 0 ? Math.round((score / Math.min(jdKeywords.length, 20)) * 100) : 0;
-  return { score: Math.min(normalized, 100), matched };
+  
+  // Generate match reason
+  let reason = '';
+  if (matchedTechs.length > 0) {
+    reason = `包含关键技能：${matchedTechs.join('、')}`;
+  }
+  if (score >= 60) {
+    reason = '高度匹配！' + reason;
+  } else if (score >= 30) {
+    reason = '部分匹配。' + reason;
+  } else {
+    reason = '匹配度较低';
+  }
+  
+  return { score, reason, matchedTechs };
+}
+
+function runSmartMatching() {
+  if (!jdAnalysis) {
+    showToast('请先在 JD 分析 Tab 粘贴并分析 JD', 'error');
+    return;
+  }
+  
+  const jdText = jdAnalysis.fullText;
+  
+  ['work','internship','projects','campus'].forEach(key => {
+    matchResults[key] = (appData[key]||[]).map((item, idx) => {
+      const { score, reason, matchedTechs } = smartMatch(item, jdText);
+      return { 
+        ...item, 
+        _idx: idx, 
+        _score: score, 
+        _reason: reason,
+        _matched: matchedTechs, 
+        _selected: score >= 30 
+      };
+    }).sort((a,b) => b._score - a._score);
+  });
+  
+  renderMatchTab();
+  renderResumePreview();
+  showToast(`AI 智能匹配完成！共 ${getTotalMatchedItems()} 条经历匹配`, 'success');
 }
 
 function runMatching() {
@@ -919,6 +1064,27 @@ function runMatching() {
   renderMatchTab();
   renderResumePreview();
   showToast(`匹配完成！共 ${getTotalMatchedItems()} 条经历匹配`, 'success');
+}
+
+function getAllJDKeywords() {
+  if (!jdAnalysis) return [];
+  return [...jdAnalysis.techs, ...jdAnalysis.softs, ...jdAnalysis.industries, ...jdAnalysis.degrees];
+}
+
+function calculateMatchScore(item, jdKeywords) {
+  if (!item || !jdKeywords.length) return { score: 0, matched: [] };
+  const text = ((item.title||'') + ' ' + (item.subtitle||'') + ' ' + (item.desc||'') + ' ' + (item.tags||[]).join(' ')).toLowerCase();
+  let score = 0;
+  const matched = [];
+  jdKeywords.forEach(kw => {
+    if (text.includes(kw.toLowerCase())) {
+      score += 1;
+      matched.push(kw);
+    }
+  });
+  // Normalize to 0-100
+  const normalized = jdKeywords.length > 0 ? Math.round((score / Math.min(jdKeywords.length, 20)) * 100) : 0;
+  return { score: Math.min(normalized, 100), matched };
 }
 
 function getTotalMatchedItems() {
@@ -952,7 +1118,8 @@ function renderMatchTab() {
           <div class="match-info">
             <div class="match-title">${escapeHtml(item.title||'')} ${item.subtitle ? '· '+escapeHtml(item.subtitle) : ''}</div>
             <div class="match-subtitle">${escapeHtml(dateStr)}</div>
-            ${item._matched.length ? `<div class="item-tags" style="margin-top:4px;">${item._matched.map(t => `<span class="tag match">${t}</span>`).join('')}</div>` : ''}
+            ${item._reason ? `<div class="match-reason">🤖 ${escapeHtml(item._reason)}</div>` : ''}
+            ${item._matched && item._matched.length ? `<div class="item-tags" style="margin-top:4px;">${item._matched.map(t => `<span class="tag match">${t}</span>`).join('')}</div>` : ''}
           </div>
           <div class="match-score ${scoreClass}">${item._score}%</div>
         </div>
@@ -1311,54 +1478,53 @@ function copyPlainText() {
 
 // ==================== SAMPLE DATA ====================
 function loadSampleData() {
-  try {
-    appData = {
-      basic: {
-        name: '张三', gender: '男', birth: '1998.05', email: 'zhangsan@example.com',
-        phone: '138-0000-0000', wechat: 'zhangsan_wx', city: '深圳',
-        targetPosition: '高级前端工程师', targetSalary: '25-35K',
-        github: 'github.com/zhangsan', linkedin: 'linkedin.com/in/zhangsan', blog: 'zhangsan.dev'
-      },
-      education: [
-        { title: '清华大学', subtitle: '硕士', major: '计算机科学与技术', startDate: '2020.09', endDate: '2023.06', gpa: '3.8/4.0', courses: '数据结构、算法设计、操作系统、计算机网络', tags: ['计算机科学','算法','数据结构'] },
-        { title: '华中科技大学', subtitle: '本科', major: '软件工程', startDate: '2016.09', endDate: '2020.06', gpa: '3.6/4.0', courses: '程序设计、数据库、Web开发', tags: ['软件工程'] }
-      ],
-      work: [
-        { title: '字节跳动', subtitle: '前端开发工程师', startDate: '2023.07', endDate: '至今', desc: '负责抖音电商后台管理系统的前端架构设计与开发，使用 React + TypeScript + Ant Design 技术栈。\n主导前端性能优化专项，首屏加载时间从 4.2s 降至 1.8s，LCP 提升 60%。\n搭建团队前端 CI/CD 流水线，集成 ESLint + Prettier + Husky，代码质量显著提升。\n参与跨团队微前端架构落地，基于 qiankun 实现 3 个子应用的统一管理。', tags: ['React','TypeScript','微前端','性能优化','CI/CD'] },
-        { title: '腾讯', subtitle: '前端开发实习生', startDate: '2022.03', endDate: '2022.09', desc: '参与腾讯云控制台前端开发，使用 Vue + Element UI 技术栈。\n独立完成云服务器管理模块的前端开发，包含实例列表、监控面板等功能。\n编写前端单元测试，测试覆盖率达到 85%。', tags: ['Vue','Element UI','腾讯云','单元测试'] }
-      ],
-      internship: [
-        { title: '阿里巴巴', subtitle: '前端开发实习生', startDate: '2021.06', endDate: '2021.09', desc: '参与淘宝商家后台系统的前端开发，使用 React + Ant Design Pro。\n实现商品管理模块的批量操作功能，提升商家操作效率。\n参与前端组件库建设，封装通用表单组件、表格组件等 10+ 个业务组件。', tags: ['React','Ant Design','组件库'] }
-      ],
-      campus: [
-        { title: '清华大学计算机系学生会', subtitle: '技术部部长', startDate: '2021.09', endDate: '2022.06', desc: '组织系内 Hackathon 活动，参与人数 200+。负责活动平台的前端开发。', tags: ['领导力','活动组织'] }
-      ],
-      projects: [
-        { title: 'CodeShare - 在线协作代码编辑器', subtitle: '项目负责人 & 全栈开发', startDate: '2022.01', endDate: '2022.06', desc: '基于 WebSocket + Monaco Editor 实现多人实时协作编辑。\n使用 Node.js + Express + MongoDB 构建后端，React + TypeScript 构建前端。\n支持代码高亮、自动补全、版本对比等功能。\nGitHub 获得 500+ Star，被阮一峰周刊推荐。', tags: ['React','TypeScript','Node.js','WebSocket','MongoDB','Express'] },
-        { title: '智能简历生成器', subtitle: '独立开发', startDate: '2023.01', endDate: '2023.02', desc: '纯前端简历生成工具，支持经历库管理和 JD 智能匹配。\n使用原生 JavaScript + CSS 实现，零依赖，响应式设计。\n实现关键词提取、匹配度打分、简历排版等核心功能。', tags: ['JavaScript','CSS','响应式设计'] }
-      ],
-      skills: [
-        { name: 'JavaScript/TypeScript', level: '精通' },
-        { name: 'React/Vue', level: '精通' },
-        { name: 'Node.js', level: '掌握' },
-        { name: 'CSS/Sass/Tailwind', level: '精通' },
-        { name: 'Webpack/Vite', level: '掌握' },
-        { name: 'Docker', level: '熟练' },
-        { name: 'MySQL/MongoDB', level: '掌握' },
-        { name: 'Git', level: '精通' },
-        { name: 'Python', level: '熟练' },
-        { name: 'Figma', level: '熟练' }
-      ],
-      certificates: [
-        { name: 'AWS Solutions Architect Associate', issuer: 'AWS', date: '2022.08' },
-        { name: 'CET-6 (580)', issuer: '教育部', date: '2019.06' }
-      ],
-      selfEval: '5年前端开发经验，精通 React/Vue 生态，具备全栈开发能力。\n主导过大型项目前端架构设计，有性能优化和工程化实践经验。\n具备良好的沟通能力和团队协作精神，善于技术分享和文档沉淀。\n持续关注前端技术发展，对 AI + 前端方向有浓厚兴趣。'
-    };
-    saveData();
-    renderLibrary();
-    // Also set sample JD
-    document.getElementById('jdInput').value = `高级前端开发工程师
+  appData = {
+    basic: {
+      name: '张三', gender: '男', birth: '1998.05', email: 'zhangsan@example.com',
+      phone: '138-0000-0000', wechat: 'zhangsan_wx', city: '深圳',
+      targetPosition: '高级前端工程师', targetSalary: '25-35K',
+      github: 'github.com/zhangsan', linkedin: 'linkedin.com/in/zhangsan', blog: 'zhangsan.dev'
+    },
+    education: [
+      { title: '清华大学', subtitle: '硕士', major: '计算机科学与技术', startDate: '2020.09', endDate: '2023.06', gpa: '3.8/4.0', courses: '数据结构、算法设计、操作系统、计算机网络', tags: ['计算机科学','算法','数据结构'] },
+      { title: '华中科技大学', subtitle: '本科', major: '软件工程', startDate: '2016.09', endDate: '2020.06', gpa: '3.6/4.0', courses: '程序设计、数据库、Web开发', tags: ['软件工程'] }
+    ],
+    work: [
+      { title: '字节跳动', subtitle: '前端开发工程师', startDate: '2023.07', endDate: '至今', desc: '负责抖音电商后台管理系统的前端架构设计与开发，使用 React + TypeScript + Ant Design 技术栈。\n主导前端性能优化专项，首屏加载时间从 4.2s 降至 1.8s，LCP 提升 60%。\n搭建团队前端 CI/CD 流水线，集成 ESLint + Prettier + Husky，代码质量显著提升。\n参与跨团队微前端架构落地，基于 qiankun 实现 3 个子应用的统一管理。', tags: ['React','TypeScript','微前端','性能优化','CI/CD'] },
+      { title: '腾讯', subtitle: '前端开发实习生', startDate: '2022.03', endDate: '2022.09', desc: '参与腾讯云控制台前端开发，使用 Vue + Element UI 技术栈。\n独立完成云服务器管理模块的前端开发，包含实例列表、监控面板等功能。\n编写前端单元测试，测试覆盖率达到 85%。', tags: ['Vue','Element UI','腾讯云','单元测试'] }
+    ],
+    internship: [
+      { title: '阿里巴巴', subtitle: '前端开发实习生', startDate: '2021.06', endDate: '2021.09', desc: '参与淘宝商家后台系统的前端开发，使用 React + Ant Design Pro。\n实现商品管理模块的批量操作功能，提升商家操作效率。\n参与前端组件库建设，封装通用表单组件、表格组件等 10+ 个业务组件。', tags: ['React','Ant Design','组件库'] }
+    ],
+    campus: [
+      { title: '清华大学计算机系学生会', subtitle: '技术部部长', startDate: '2021.09', endDate: '2022.06', desc: '组织系内 Hackathon 活动，参与人数 200+。负责活动平台的前端开发。', tags: ['领导力','活动组织'] }
+    ],
+    projects: [
+      { title: 'CodeShare - 在线协作代码编辑器', subtitle: '项目负责人 & 全栈开发', startDate: '2022.01', endDate: '2022.06', desc: '基于 WebSocket + Monaco Editor 实现多人实时协作编辑。\n使用 Node.js + Express + MongoDB 构建后端，React + TypeScript 构建前端。\n支持代码高亮、自动补全、版本对比等功能。\nGitHub 获得 500+ Star，被阮一峰周刊推荐。', tags: ['React','TypeScript','Node.js','WebSocket','MongoDB','Express'] },
+      { title: '智能简历生成器', subtitle: '独立开发', startDate: '2023.01', endDate: '2023.02', desc: '纯前端简历生成工具，支持经历库管理和 JD 智能匹配。\n使用原生 JavaScript + CSS 实现，零依赖，响应式设计。\n实现关键词提取、匹配度打分、简历排版等核心功能。', tags: ['JavaScript','CSS','响应式设计'] }
+    ],
+    skills: [
+      { name: 'JavaScript/TypeScript', level: '精通' },
+      { name: 'React/Vue', level: '精通' },
+      { name: 'Node.js', level: '掌握' },
+      { name: 'CSS/Sass/Tailwind', level: '精通' },
+      { name: 'Webpack/Vite', level: '掌握' },
+      { name: 'Docker', level: '熟练' },
+      { name: 'MySQL/MongoDB', level: '掌握' },
+      { name: 'Git', level: '精通' },
+      { name: 'Python', level: '熟练' },
+      { name: 'Figma', level: '熟练' }
+    ],
+    certificates: [
+      { name: 'AWS Solutions Architect Associate', issuer: 'AWS', date: '2022.08' },
+      { name: 'CET-6 (580)', issuer: '教育部', date: '2019.06' }
+    ],
+    selfEval: '5年前端开发经验，精通 React/Vue 生态，具备全栈开发能力。\n主导过大型项目前端架构设计，有性能优化和工程化实践经验。\n具备良好的沟通能力和团队协作精神，善于技术分享和文档沉淀。\n持续关注前端技术发展，对 AI + 前端方向有浓厚兴趣。'
+  };
+  saveData();
+  renderLibrary();
+  // Also set sample JD
+  document.getElementById('jdInput').value = `高级前端开发工程师
 
 【岗位职责】
 1. 负责公司核心产品的前端架构设计与开发
@@ -1376,13 +1542,9 @@ function loadSampleData() {
 6. 熟悉前端工程化，了解 Webpack/Vite 等构建工具
 7. 有微前端或大型项目经验者优先
 8. 具备良好的沟通能力和团队协作精神`;
-    analyzeJD();
-    runMatching();
-    showToast('示例数据已加载，JD 已自动分析匹配', 'success');
-  } catch(err) {
-    console.error('loadSampleData error:', err);
-    showToast('加载失败: ' + err.message, 'error');
-  }
+  analyzeJD();
+  runSmartMatching();
+  showToast('示例数据已加载，JD 已自动分析匹配', 'success');
 }
 
 // ==================== UTILS ====================
